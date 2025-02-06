@@ -28,5 +28,7 @@ def check_for_door():
 # Just check once and exit
 if check_for_door():
     print("Door opened - script ending")
+    mc.postToChat("Action Done! Sending next screenshot to LLM")
 else:
     print("No door found")
+    mc.postToChat("Action Done! Sending next screenshot to LLM")

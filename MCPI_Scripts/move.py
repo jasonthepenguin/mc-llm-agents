@@ -53,5 +53,6 @@ def move_forward(distance):
 
 # --- Main program ---
 mc.postToChat("Moving forward 10 blocks!")
+mc.postToChat("NicDunz i am near.")
 move_forward(10)
-mc.postToChat("Done!")
+mc.postToChat("Action Done! Sending next screenshot to LLM")
