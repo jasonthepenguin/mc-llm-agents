@@ -32,8 +32,8 @@ class WindowCapture:
             windows = gw.getAllWindows()  # Returns list of Window objects
             result = []
             for win in windows:
-                # Only include windows that have a title and are visible
-                if win.title and win.isVisible:
+                # Only include windows that have a non-empty title.
+                if win.title:
                     result.append({
                         'title': win.title,
                         'owner': 'N/A',
@@ -49,6 +49,7 @@ class WindowCapture:
         except Exception as e:
             print(f"Error in get_window_list: {e}")
             return []
+
 
     def capture_window(self, window_title):
         """
