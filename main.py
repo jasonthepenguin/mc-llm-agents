@@ -4,7 +4,6 @@ from PIL import Image, ImageTk, ImageGrab
 import os
 import platform
 import time
-import pyautogui
 import datetime
 import io
 # --- Import the new screenshot module ---
