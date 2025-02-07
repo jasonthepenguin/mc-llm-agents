@@ -9,3 +9,7 @@ ENV/
 
 screenshots/
 logs/
+
+# environment variable file
+
+.env

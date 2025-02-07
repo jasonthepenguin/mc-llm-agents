@@ -65,6 +65,29 @@ api_key_var = tk.StringVar()
 api_entry = tk.Entry(api_frame, textvariable=api_key_var, width=25, show="•")
 api_entry.pack(side=tk.TOP, anchor="w")  # Align entry to top-left
 
+# Max Turns field, stacked layout
+max_turns_label = tk.Label(api_frame, text="Max Turns:")
+max_turns_label.pack(side=tk.TOP, anchor="w")
+max_turns_var = tk.IntVar(value=5)
+
+def validate_max_turns(P):
+    if P == "":
+        return True
+    try:
+        value = int(P)
+        if 0 <= value <= 50:
+            return True  # Accept the change
+        else:
+            return False # Reject the change
+    except ValueError:
+        return False
+
+max_turns_entry = tk.Entry(api_frame, textvariable=max_turns_var, width=5)
+max_turns_entry.pack(side=tk.TOP, anchor="w")
+vcmd = (max_turns_entry.register(validate_max_turns), '%P')
+max_turns_entry.config(validate='key', validatecommand=vcmd)
+max_turns_var.trace_add("write", lambda *args: None)
+
 # Configure column weights for better distribution
 top_frame.grid_columnconfigure(0, weight=1)  # Logo area
 top_frame.grid_columnconfigure(1, weight=2)  # Model selector area
@@ -295,11 +318,7 @@ goal_entry.bind('<FocusIn>', on_entry_click)
 
 # Create Start button
 start_button = tk.Button(bottom_frame, text="Start", command=start_action)
-start_button.pack(side=tk.RIGHT)
-
-# Create Take Screenshot button
-screenshot_button = tk.Button(bottom_frame, text="Take Screenshot", command=take_screenshot)
-screenshot_button.pack(side=tk.RIGHT, padx=(0, 10))  # Add padding to separate from Start button
+start_button.pack(side=tk.LEFT, padx=(0, 10))  # Moved to left, added padding
 
 # --- Add Select Window Button ---
 select_window_button = tk.Button(bottom_frame, text="Select Window", command=select_window)
