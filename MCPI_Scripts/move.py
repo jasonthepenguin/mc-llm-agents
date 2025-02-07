@@ -19,35 +19,35 @@ def move_forward(distance):
         return
 
     for _ in range(distance):
-        new_x = int(round(pos.x + direction.x))
-        new_y = int(round(pos.y + direction.y))
-        new_z = int(round(pos.z + direction.z))
+        # Use floats for new position calculation
+        new_x = pos.x + direction.x
+        new_y = pos.y + direction.y
+        new_z = pos.z + direction.z
         new_pos = minecraft.Vec3(new_x, new_y, new_z)
 
         # --- Obstacle Detection and Handling ---
-        block_below = mc.getBlock(new_pos.x, new_pos.y - 1, new_pos.z)  # Block *below* the target position
-        block_at = mc.getBlock(new_pos.x, new_pos.y, new_pos.z)      # Block *at* the target position
-        block_above = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z) # Block *above*
+        # Get blocks *once* and store in variables
+        block_below = mc.getBlock(new_pos.x, new_pos.y - 1, new_pos.z)
+        block_at = mc.getBlock(new_pos.x, new_pos.y, new_pos.z)
+        block_above = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z)
 
-        if block_at != block.AIR.id:  # Something is blocking the way at head level
-            if block_above == block.AIR.id and block_below != block.AIR.id: #Is it walkable?
-                # Try to step up one block
-                new_y += 1
-                new_pos = minecraft.Vec3(new_x, new_y, new_z)
-                block_above = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z) #recheck block above
-                if block_above != block.AIR.id: #If we step up, do we have space?
+        if block_at != block.AIR.id:  # Something is blocking the way
+            if block_above == block.AIR.id and block_below != block.AIR.id:
+                # Try to step up one block.  No need to recalculate new_pos
+                new_pos = minecraft.Vec3(new_x, new_y + 1, new_z)
+                # Check block above *after* moving up.
+                block_above_new = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z)
+                if block_above_new != block.AIR.id:
                     mc.postToChat("Cannot move: No space to step up.")
                     return
             else:
-                 mc.postToChat("Cannot move: Blocked.")
-                 return #Cant move here, blocked
-
-
+                mc.postToChat("Cannot move: Blocked.")
+                return  # Cant move here, blocked
 
         # --- End Obstacle Detection ---
 
-        mc.player.setTilePos(new_pos)
-        pos = new_pos
+        mc.player.setTilePos(new_pos)  # setTilePos *can* take floats
+        pos = new_pos  # Update current position with the (potentially) floating-point values.
         time.sleep(0.2)
 
 
