@@ -2,56 +2,62 @@ import mcpi.minecraft as minecraft
 import mcpi.block as block
 import time
 
-# Connect to the Minecraft server
-# mc = minecraft.Minecraft.create() # REMOVE
 
 def move_forward(mc, distance):
     """Moves the player forward, handling obstacles one block high and doors."""
 
+    PLAYER_HEIGHT = 1.62  # Approximate player height in blocks
+
     pos = mc.player.getPos()
     direction = mc.player.getDirection()
 
-    magnitude = (direction.x**2 + direction.y**2 + direction.z**2)**0.5
-    if magnitude > 0:
-        direction = minecraft.Vec3(direction.x / magnitude, direction.y / magnitude, direction.z / magnitude)
+    # --- Restrict movement to the XZ plane ---
+    magnitude_xz = (direction.x**2 + direction.z**2)**0.5
+    if magnitude_xz > 0:
+        direction_xz = minecraft.Vec3(direction.x / magnitude_xz, 0, direction.z / magnitude_xz)
     else:
-        mc.postToChat("Cannot move: Looking straight up/down.")
+        mc.postToChat("Cannot move: No horizontal direction.")
         return
 
     for _ in range(distance):
-        new_x = pos.x + direction.x
-        new_y = pos.y + direction.y
-        new_z = pos.z + direction.z
+        new_x = pos.x + direction_xz.x
+        new_y = pos.y  # Don't initially change y
+        new_z = pos.z + direction_xz.z
         new_pos = minecraft.Vec3(new_x, new_y, new_z)
 
         # --- Obstacle Detection and Handling ---
         block_below = mc.getBlock(new_pos.x, new_pos.y - 1, new_pos.z)
-        block_at_data = mc.getBlockWithData(new_pos.x, new_pos.y, new_pos.z)  # Use getBlockWithData
-        block_above = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z)
+        block_at_feet_data = mc.getBlockWithData(new_pos.x, new_pos.y, new_pos.z)
+        block_at_head_data = mc.getBlockWithData(new_pos.x, new_pos.y + PLAYER_HEIGHT - 0.1, new_pos.z) #check just below head
+        block_above = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z) #still need for door logic
 
-        if block_at_data.id != block.AIR.id:
-            # Check if it's a door
-            if block_at_data.id == block.DOOR_WOOD.id:
-                # Check if the door is open (top or bottom half)
-                if (block_at_data.data & 0x4) == 0x4:  # Check bit 2 (0x4) for open state
-                    pass  # Door is open, proceed
-                elif block_above == block.AIR.id: #closed door but we can step up
-                    # Step up one block
-                    new_pos.y += 1
-                    # Recheck block_above *after* moving up.
-                    block_above_new = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z)
-                    if block_above_new != block.AIR.id:
-                        mc.postToChat("Cannot move: No space to step up.")
-                        return
+        
+
+
+        # --- Step-up Logic ---
+        if (block_at_feet_data.id != block.AIR.id and
+            block_at_head_data.id == block.AIR.id and
+            block_below != block.AIR.id):
+
+            # Calculate the *exact* Y level of the top of the obstacle
+            next_block_y = int(new_pos.y) + 1
+
+            # Step up.
+            new_pos.y = float(next_block_y)
+            print(f"Stepping up to: {new_pos}")
+
+            # We don't need to re-check block_above here, as block_at_head_data covers it
+
+        elif block_at_feet_data.id != block.AIR.id:
+            # --- Door Handling (Simplified) ---
+            if block_at_feet_data.id == block.DOOR_WOOD.id:
+                if (block_at_feet_data.data & 0x4) == 0x4:  # Door open
+                    pass # proceed
+                elif block_above == block.AIR.id: #closed but can step up
+                    new_pos.y = float(int(new_pos.y + 1))
+                    print(f"Stepping up (door) to: {new_pos}")
                 else:
                     mc.postToChat("Cannot move: Door closed.")
-                    return
-            elif block_above == block.AIR.id and block_below != block.AIR.id:
-                # Step up one block
-                new_pos.y += 1
-                block_above_new = mc.getBlock(new_pos.x, new_pos.y + 1, new_pos.z)
-                if block_above_new != block.AIR.id:
-                    mc.postToChat("Cannot move: No space to step up.")
                     return
             else:
                 mc.postToChat("Cannot move: Blocked.")
@@ -64,8 +70,32 @@ def move_forward(mc, distance):
         time.sleep(0.2)
 
 
-# --- Main program ---
-# mc.postToChat("Moving forward 10 blocks!") # REMOVE
-# mc.postToChat("NicDunz i am near.") # REMOVE
-# move_forward(10) # REMOVE
-# mc.postToChat("Action Done! Sending next screenshot to LLM") # REMOVE
+def look_left(mc, degrees):
+    """Rotates the player's view to the left by the specified degrees."""
+    current_rotation = mc.player.getRotation()
+    new_rotation = (current_rotation + degrees) % 360  # Keep within 0-360 range
+    mc.player.setRotation(new_rotation)
+
+def look_right(mc, degrees):
+    """Rotates the player's view to the right by the specified degrees."""
+    current_rotation = mc.player.getRotation()
+    new_rotation = (current_rotation - degrees) % 360 # Keep within 0-360 range
+    mc.player.setRotation(new_rotation)
+
+def look_up(mc, degrees):
+    """Changes the player's pitch (up/down angle) upwards, limited to -90 to 90."""
+    current_pitch = mc.player.getPitch()
+    new_pitch = current_pitch + degrees
+    # Clamp the pitch to the valid range
+    new_pitch = max(-90, min(90, new_pitch))
+    mc.player.setPitch(new_pitch)
+
+def look_down(mc, degrees):
+    """Changes the player's pitch (up/down angle) downwards, limited to -90 to 90."""
+    current_pitch = mc.player.getPitch()
+    new_pitch = current_pitch - degrees
+    # Clamp the pitch to the valid range
+    new_pitch = max(-90, min(90, new_pitch))
+    mc.player.setPitch(new_pitch)
+
+

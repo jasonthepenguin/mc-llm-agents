@@ -127,19 +127,21 @@ logs_output_var = tk.StringVar(value="./logs")
 logs_output_button = tk.Button(logs_output_frame, text="Select Logs Directory", command=lambda: browse_directory(logs_output_var))
 logs_output_button.pack(fill=tk.X)
 
+# --- Create a sub-frame for the action buttons ---
+actions_button_frame = tk.Frame(logs_output_frame)
+actions_button_frame.pack(fill=tk.X)  # Fill horizontally
+
 # --- Add Move Button ---
 def move_player():
     """Moves the player in Minecraft."""
     try:
-        move.move_forward(mc, 10)  # Call move_forward with mc and distance
-        #take screenshot after move
+        move.move_forward(mc, 10)
         take_screenshot()
     except Exception as e:
         messagebox.showerror("Error", f"Could not connect to Minecraft: {e}")
 
-move_button = tk.Button(logs_output_frame, text="Move", command=move_player)
-move_button.pack(fill=tk.X)
-
+move_button = tk.Button(actions_button_frame, text="Move", command=move_player, width=8)
+move_button.grid(row=0, column=0, padx=2, pady=2)
 
 def browse_directory(var):
     from tkinter import filedialog
