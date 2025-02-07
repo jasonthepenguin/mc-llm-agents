@@ -1,11 +1,147 @@
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
+import os
+import platform
+import time
+import pyautogui
+import datetime
+import io
+# --- Quartz and Cocoa imports ---
+from Quartz import (
+    CGWindowListCopyWindowInfo,
+    kCGWindowListOptionOnScreenOnly,
+    kCGNullWindowID,
+    kCGWindowBounds,
+    kCGWindowName,
+    kCGWindowOwnerName,
+    kCGWindowNumber,
+    kCGWindowListOptionIncludingWindow,
+    CGWindowListCreateImage,
+    CGRectMake,
+    kCGWindowImageBoundsIgnoreFraming
+)
+import Cocoa
+import json  # Import the json module
 
-# Create main window
+# --- Constants and Cache File ---
+WINDOW_CACHE_FILE = 'window_cache.json'
+
+# --- Functions from screenshot.py, adapted for integration ---
+
+def load_cached_window():
+    """Load previously selected window title from cache"""
+    try:
+        with open(WINDOW_CACHE_FILE, 'r') as f:
+            return json.load(f)['window_title']
+    except:
+        return None
+
+def save_window_to_cache(window_title):
+    """Save selected window title to cache"""
+    with open(WINDOW_CACHE_FILE, 'w') as f:
+        json.dump({'window_title': window_title}, f)
+
+def get_window_list():
+    """Get list of all windows (Quartz)"""
+    try:
+        window_list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID)
+        windows = []
+        for window in window_list:
+            title = window.get(kCGWindowName, '')
+            owner = window.get(kCGWindowOwnerName, '')
+            if title:  # Only include windows with titles
+                windows.append({
+                    'title': title,
+                    'owner': owner,
+                    'bounds': window.get(kCGWindowBounds, {}),
+                    'id': window.get(kCGWindowNumber, 0)
+                })
+        return windows
+    except Exception as e:
+        print(f"Error in get_window_list: {e}")  # Error handling
+        return []
+
+def cgimage_to_png(cgimage):
+    """Convert a CGImage to PNG data (Cocoa)"""
+    try:
+        bitmapRep = Cocoa.NSBitmapImageRep.alloc().initWithCGImage_(cgimage)
+        png_data = bitmapRep.representationUsingType_properties_(Cocoa.NSPNGFileType, None)
+        bytes_data = png_data.bytes().tobytes()
+        return bytes_data
+    except Exception as e:
+        print(f"Error in cgimage_to_png: {e}") # Error handling
+        return None
+
+
+def capture_window(window_title):
+    """Capture a specific window by title (Quartz)"""
+    try:
+        windows = get_window_list()
+        if not windows:
+            print("No windows found!")
+            return None
+
+        window = None
+        # Try to find window by index first (if a number is provided)
+        try:
+            idx = int(window_title)
+            if 0 <= idx < len(windows):
+                window = windows[idx]
+        except ValueError:
+            # If not a number, search by title
+            for win in windows:
+                if window_title.lower() in win['title'].lower():
+                    window = win
+                    break
+
+        if not window:
+            print(f"No window found matching: {window_title}")
+            return None
+
+        save_window_to_cache(window['title']) # Save to cache
+
+        bounds = window['bounds']
+        x, y = int(bounds['X']), int(bounds['Y'])
+        width, height = int(bounds['Width']), int(bounds['Height'])
+        rect = CGRectMake(x, y, width, height)
+        windowid = window['id']
+
+        # --- CRITICAL: This part is most likely to cause issues ---
+        try:
+            windowimg = CGWindowListCreateImage(
+                rect,
+                kCGWindowListOptionIncludingWindow,
+                windowid,
+                kCGWindowImageBoundsIgnoreFraming
+            )
+        except Exception as e:
+            print(f"Error capturing window with Quartz: {e}")
+            return None
+        # --------------------------------------------------------
+
+        if not windowimg:
+            print("Failed to capture window")
+            return None
+
+        png_data = cgimage_to_png(windowimg)
+        if not png_data:
+            print("Failed to convert image to PNG")
+            return None
+
+        img = Image.open(io.BytesIO(png_data))
+        return img
+
+    except Exception as e:
+        print(f"Error in capture_window: {e}")
+        return None
+
+
+# --- Tkinter GUI Code ---
+
 root = tk.Tk()
 root.title("FlowersBench MC Eval")
-root.geometry("800x600")  # Adjust window size as needed
+root.geometry("800x600")
 
 # Load the logo image from PNG instead of SVG
 try:
@@ -118,6 +254,65 @@ def browse_directory(var):
     if directory:
         var.set(directory)
 
+# --- Integrated Window Selection and Capture ---
+selected_window_var = tk.StringVar()
+
+def select_window():
+    """Lists available windows and allows selection (integrated)."""
+    windows = get_window_list()
+    if not windows:
+        tk.messagebox.showerror("Error", "No windows found!")
+        return
+
+    window_titles = [f"{win['owner']} - {win['title']}" for win in windows]
+
+    popup = tk.Toplevel(root)
+    popup.title("Select Window")
+
+    if window_titles:
+        selected_window_var.set(window_titles[0])
+        window_menu = tk.OptionMenu(popup, selected_window_var, *window_titles)
+        window_menu.pack(pady=10)
+    else:
+        tk.Label(popup, text="No windows found.").pack(pady=10)
+
+    def confirm_selection():
+        print(f"Selected window: {selected_window_var.get()}")
+        # Extract just the title.  We stored "Owner - Title".
+        selected_title = selected_window_var.get().split(" - ", 1)[1]  # Get part after " - "
+        save_window_to_cache(selected_title) # Save the actual title
+        popup.destroy()
+
+    confirm_button = tk.Button(popup, text="Confirm", command=confirm_selection)
+    confirm_button.pack()
+
+def take_screenshot():
+    """Captures and displays the screenshot (integrated)."""
+    window_title = selected_window_var.get()
+    if not window_title:
+        tk.messagebox.showwarning("Warning", "No window selected.")
+        return
+
+    # Extract just the title.  We stored "Owner - Title".
+    selected_title = window_title.split(" - ", 1)[1]
+
+    img = capture_window(selected_title)
+    if img:
+        # --- File Saving ---
+        os.makedirs(logs_output_var.get(), exist_ok=True)
+        safe_title = ''.join(c for c in selected_title if c.isalnum() or c in (' ', '-', '_'))
+        filename = f'{logs_output_var.get()}/{safe_title}_{int(time.time())}.png'
+        img.save(filename)
+        print(f"Screenshot saved as {filename}")
+        # ------------------
+
+        img = img.resize((580, 380), Image.Resampling.LANCZOS)
+        screenshot_tk = ImageTk.PhotoImage(img)
+        screenshot_canvas.create_image(0, 0, anchor=tk.NW, image=screenshot_tk)
+        screenshot_canvas.image = screenshot_tk  # Keep a reference!
+    else:
+        tk.messagebox.showerror("Error", "Failed to capture screenshot.")
+
 # Create right panel for screenshot
 screenshot_frame = tk.Frame(center_frame)
 screenshot_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
@@ -146,7 +341,10 @@ def start_action():
     print(f"Goal: {goal_var.get()}")
     print(f"Model: {model_var.get()}")
     print(f"API Key: {api_key_var.get()}")
-    print(f"Log Directory: {log_dir_var.get()}")
+    print(f"Log Directory: {logs_output_var.get()}")
+
+    # Take a screenshot
+    take_screenshot()
 
 # Clear the placeholder text on focus
 def on_entry_click(event):
@@ -158,6 +356,15 @@ goal_entry.bind('<FocusIn>', on_entry_click)
 # Create Start button
 start_button = tk.Button(bottom_frame, text="Start", command=start_action)
 start_button.pack(side=tk.RIGHT)
+
+# Create Take Screenshot button
+screenshot_button = tk.Button(bottom_frame, text="Take Screenshot", command=take_screenshot)
+screenshot_button.pack(side=tk.RIGHT, padx=(0, 10))  # Add padding to separate from Start button
+
+# --- Add Select Window Button ---
+select_window_button = tk.Button(bottom_frame, text="Select Window", command=select_window)
+select_window_button.pack(side=tk.RIGHT, padx=(0, 10))  # Add padding
+
 
 # Start the main event loop
 root.mainloop()
