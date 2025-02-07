@@ -4,7 +4,7 @@ from PIL import Image, ImageTk
 
 # Create main window
 root = tk.Tk()
-root.title("LLM Benchmark GUI")
+root.title("FlowersBench MC Eval")
 root.geometry("800x600")  # Adjust window size as needed
 
 # Load the logo image from PNG instead of SVG
@@ -47,7 +47,7 @@ api_frame.grid(row=0, column=2, sticky="e", padx=(0, 20))  # Added right padding
 api_label = tk.Label(api_frame, text="Openrouter API key:")
 api_label.pack(side=tk.LEFT, padx=(0, 10))  # Added padding between label and entry
 api_key_var = tk.StringVar()
-api_entry = tk.Entry(api_frame, textvariable=api_key_var, width=25)  # Set fixed width
+api_entry = tk.Entry(api_frame, textvariable=api_key_var, width=25, show="•")  # Added show parameter
 api_entry.pack(side=tk.LEFT)
 
 # Configure column weights for better distribution
@@ -69,23 +69,19 @@ actions_frame.pack_propagate(False)  # Prevent frame from shrinking
 # Current Action section
 current_action_label = tk.Label(actions_frame, text="Current Action", font=('Arial', 12, 'bold'))
 current_action_label.pack(anchor='w', pady=(0, 5))
-current_action_text = tk.Text(actions_frame, height=3, width=20, wrap=tk.WORD, state='normal', font=('Arial', 14))  # Increased font size
+current_action_text = tk.Text(actions_frame, height=3, width=20, wrap=tk.WORD, state='normal', font=('Arial', 14))
 current_action_text.pack(fill=tk.X, pady=(0, 15))
 current_action_text.tag_configure('red', foreground='red', justify='center')
 current_action_text.tag_configure('center', justify='center')
-current_action_text.insert('1.0', "\n", 'center')
-current_action_text.insert('2.0', "move(5 blocks)", ('red', 'center'))
 current_action_text.config(state='disabled')
 
 # Next Action section
 next_action_label = tk.Label(actions_frame, text="Next Action", font=('Arial', 12, 'bold'))
 next_action_label.pack(anchor='w', pady=(0, 5))
-next_action_text = tk.Text(actions_frame, height=3, width=20, wrap=tk.WORD, state='normal', font=('Arial', 14))  # Increased font size
+next_action_text = tk.Text(actions_frame, height=3, width=20, wrap=tk.WORD, state='normal', font=('Arial', 14))
 next_action_text.pack(fill=tk.X, pady=(0, 15))
 next_action_text.tag_configure('blue', foreground='blue', justify='center')
 next_action_text.tag_configure('center', justify='center')
-next_action_text.insert('1.0', "\n", 'center')
-next_action_text.insert('2.0', "interact()", ('blue', 'center'))
 next_action_text.config(state='disabled')
 
 # Action Log section
@@ -94,6 +90,7 @@ action_log_label.pack(anchor='w', pady=(0, 5))
 action_log_text = tk.Text(actions_frame, height=8, width=20, wrap=tk.WORD, state='normal', font=('Arial', 11))
 action_log_text.pack(fill=tk.X)
 action_log_text.tag_configure('gray', foreground='gray')
+action_log_text.config(state='disabled')
 
 # Add example log entries
 log_entries = [
@@ -107,6 +104,20 @@ for entry in log_entries:
     action_log_text.insert(tk.END, f"{entry}\n", 'gray')
 action_log_text.config(state='disabled')
 
+# Add logs output directory selector
+logs_output_frame = tk.Frame(actions_frame)
+logs_output_frame.pack(fill=tk.X, pady=(10, 0))
+
+logs_output_var = tk.StringVar(value="./logs")
+logs_output_button = tk.Button(logs_output_frame, text="Select Logs Directory", command=lambda: browse_directory(logs_output_var))
+logs_output_button.pack(fill=tk.X)
+
+def browse_directory(var):
+    from tkinter import filedialog
+    directory = filedialog.askdirectory(initialdir=var.get())
+    if directory:
+        var.set(directory)
+
 # Create right panel for screenshot
 screenshot_frame = tk.Frame(center_frame)
 screenshot_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
@@ -115,37 +126,38 @@ screenshot_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 screenshot_canvas = tk.Canvas(screenshot_frame, bg="white", borderwidth=2, relief="groove")
 screenshot_canvas.pack(expand=True, fill=tk.BOTH)
 
-# Optionally, add placeholder text inside the canvas
-screenshot_canvas.create_text(300, 200, text="Screenshot Display Area", fill="gray")
+# Add placeholder text
+screenshot_canvas.create_text(300, 200, text="Screenshot display area", fill="gray")
 
 # -------------------------
 # Create Bottom Frame (for goal entry and Start button)
 # -------------------------
 bottom_frame = tk.Frame(root)
-bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=10)
 
-# Create Entry widget prepopulated with prompt
+# Create goal entry frame
 goal_var = tk.StringVar(value="Enter goal for LLM to accomplish")
-goal_entry = tk.Entry(bottom_frame, textvariable=goal_var, width=50)
-goal_entry.grid(row=0, column=0, padx=5)
+goal_entry = tk.Entry(bottom_frame, textvariable=goal_var)
+goal_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
 
-# Clear the placeholder text on focus if it hasn't been changed yet.
+def start_action():
+    # Placeholder function for now
+    print("Starting action with:")
+    print(f"Goal: {goal_var.get()}")
+    print(f"Model: {model_var.get()}")
+    print(f"API Key: {api_key_var.get()}")
+    print(f"Log Directory: {log_dir_var.get()}")
+
+# Clear the placeholder text on focus
 def on_entry_click(event):
     if goal_var.get() == "Enter goal for LLM to accomplish":
         goal_entry.delete(0, tk.END)
 
 goal_entry.bind('<FocusIn>', on_entry_click)
 
-# Create Start button to the right of the goal entry
-def start_action():
-    # For now, simply print the entered goal
-    print("Start clicked. Goal:", goal_var.get())
-
+# Create Start button
 start_button = tk.Button(bottom_frame, text="Start", command=start_action)
-start_button.grid(row=0, column=1, padx=0)
-
-# Optional: Allow the goal entry column to expand
-bottom_frame.grid_columnconfigure(0, weight=1)
+start_button.pack(side=tk.RIGHT)
 
 # Start the main event loop
 root.mainloop()
