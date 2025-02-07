@@ -140,8 +140,58 @@ def move_player():
     except Exception as e:
         messagebox.showerror("Error", f"Could not connect to Minecraft: {e}")
 
-move_button = tk.Button(actions_button_frame, text="Move", command=move_player, width=8)
-move_button.grid(row=0, column=0, padx=2, pady=2)
+#move_button = tk.Button(actions_button_frame, text="Move", command=move_player, width=8)
+#move_button.grid(row=0, column=0, padx=2, pady=2)
+
+def open_action_panel():
+    """Opens a popup for interacting with movement functions."""
+    popup = tk.Toplevel(root)
+    popup.title("Action Panel")
+
+    # --- Move Forward ---
+    tk.Label(popup, text="Move Forward").grid(row=0, column=0, sticky="w")
+    distance_var = tk.IntVar(value=1)
+    distance_entry = tk.Entry(popup, textvariable=distance_var, width=5)
+    distance_entry.grid(row=0, column=1, padx=5)
+    move_forward_button = tk.Button(popup, text="Go", command=lambda: move.move_forward(mc, distance_var.get()))
+    move_forward_button.grid(row=0, column=2)
+
+    # --- Look Left ---
+    tk.Label(popup, text="Look Left (degrees)").grid(row=1, column=0, sticky="w")
+    look_left_var = tk.IntVar(value=90)
+    look_left_entry = tk.Entry(popup, textvariable=look_left_var, width=5)
+    look_left_entry.grid(row=1, column=1, padx=5)
+    look_left_button = tk.Button(popup, text="Go", command=lambda: move.look_left(mc, look_left_var.get()))
+    look_left_button.grid(row=1, column=2)
+
+    # --- Look Right ---
+    tk.Label(popup, text="Look Right (degrees)").grid(row=2, column=0, sticky="w")
+    look_right_var = tk.IntVar(value=90)
+    look_right_entry = tk.Entry(popup, textvariable=look_right_var, width=5)
+    look_right_entry.grid(row=2, column=1, padx=5)
+    look_right_button = tk.Button(popup, text="Go", command=lambda: move.look_right(mc, look_right_var.get()))
+    look_right_button.grid(row=2, column=2)
+
+     # --- Look Up ---
+    tk.Label(popup, text="Look Up (degrees)").grid(row=3, column=0, sticky="w")
+    look_up_var = tk.IntVar(value=90)
+    look_up_entry = tk.Entry(popup, textvariable=look_up_var, width=5)
+    look_up_entry.grid(row=3, column=1, padx=5)
+    look_up_button = tk.Button(popup, text="Go", command=lambda: move.look_up(mc, look_up_var.get()))
+    look_up_button.grid(row=3, column=2)
+
+     # --- Look Down ---
+    tk.Label(popup, text="Look Down (degrees)").grid(row=4, column=0, sticky="w")
+    look_down_var = tk.IntVar(value=90)
+    look_down_entry = tk.Entry(popup, textvariable=look_down_var, width=5)
+    look_down_entry.grid(row=4, column=1, padx=5)
+    look_down_button = tk.Button(popup, text="Go", command=lambda: move.look_down(mc, look_down_var.get()))
+    look_down_button.grid(row=4, column=2)
+
+
+
+action_panel_button = tk.Button(actions_button_frame, text="Action Panel", command=open_action_panel, width=12)
+action_panel_button.grid(row=0, column=0, padx=2, pady=2)
 
 def browse_directory(var):
     from tkinter import filedialog
