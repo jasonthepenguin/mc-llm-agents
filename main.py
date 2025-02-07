@@ -227,7 +227,6 @@ window_capture = WindowCapture(logs_output_var.get())  # Initialize
 selected_window_var = tk.StringVar()
 
 def select_window():
-    """Lists available windows and allows selection (integrated)."""
     windows = window_capture.get_window_list()  # Use class method
     if not windows:
         messagebox.showerror("Error", "No windows found!")
@@ -247,9 +246,9 @@ def select_window():
 
     def confirm_selection():
         print(f"Selected window: {selected_window_var.get()}")
-        # Extract just the title.  We stored "Owner - Title".
-        selected_title = selected_window_var.get().split(" - ", 1)[1]  # Get part after " - "
-        window_capture.save_window_to_cache(selected_title)  # Use class method
+        # Extract the title (after " - ")
+        selected_title = selected_window_var.get().split(" - ", 1)[1]
+        window_capture.save_window_to_cache(selected_title)
         popup.destroy()
 
     confirm_button = tk.Button(popup, text="Confirm", command=confirm_selection)

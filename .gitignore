@@ -9,6 +9,8 @@ ENV/
 
 screenshots/
 logs/
+__pycache__/
+MCPI_Scripts/__pycache__
 
 # environment variable file
 

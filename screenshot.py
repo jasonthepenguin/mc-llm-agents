@@ -1,39 +1,24 @@
 # screenshot.py
-from PIL import Image
+from PIL import Image, ImageGrab
 import os
 import time
 import io
-# --- Quartz and Cocoa imports ---
-from Quartz import (
-    CGWindowListCopyWindowInfo,
-    kCGWindowListOptionOnScreenOnly,
-    kCGNullWindowID,
-    kCGWindowBounds,
-    kCGWindowName,
-    kCGWindowOwnerName,
-    kCGWindowNumber,
-    kCGWindowListOptionIncludingWindow,
-    CGWindowListCreateImage,
-    CGRectMake,
-    kCGWindowImageBoundsIgnoreFraming
-)
-import Cocoa
-import json  # Import the json module
+import json
+import pygetwindow as gw
 
-# --- Constants and Cache File ---
 WINDOW_CACHE_FILE = 'window_cache.json'
 
 class WindowCapture:
     def __init__(self, logs_output_dir="./logs"):
         self.logs_output_dir = logs_output_dir
-        self.cached_window = self.load_cached_window() # Load on init
+        self.cached_window = self.load_cached_window()  # Load on init
 
     def load_cached_window(self):
         """Load previously selected window title from cache"""
         try:
             with open(WINDOW_CACHE_FILE, 'r') as f:
                 return json.load(f)['window_title']
-        except:
+        except Exception:
             return None
 
     def save_window_to_cache(self, window_title):
@@ -42,93 +27,67 @@ class WindowCapture:
             json.dump({'window_title': window_title}, f)
 
     def get_window_list(self):
-        """Get list of all windows (Quartz)"""
+        """Get list of all visible windows using pygetwindow"""
         try:
-            window_list = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID)
-            windows = []
-            for window in window_list:
-                title = window.get(kCGWindowName, '')
-                owner = window.get(kCGWindowOwnerName, '')
-                if title:  # Only include windows with titles
-                    windows.append({
-                        'title': title,
-                        'owner': owner,
-                        'bounds': window.get(kCGWindowBounds, {}),
-                        'id': window.get(kCGWindowNumber, 0)
+            windows = gw.getAllWindows()  # Returns list of Window objects
+            result = []
+            for win in windows:
+                # Only include windows that have a title and are visible
+                if win.title and win.isVisible:
+                    result.append({
+                        'title': win.title,
+                        'owner': 'N/A',
+                        'bounds': {
+                            'X': win.left,
+                            'Y': win.top,
+                            'Width': win.width,
+                            'Height': win.height
+                        },
+                        'id': win._hWnd  # Windows handle
                     })
-            return windows
+            return result
         except Exception as e:
-            print(f"Error in get_window_list: {e}")  # Error handling
+            print(f"Error in get_window_list: {e}")
             return []
 
-    def cgimage_to_png(self, cgimage):
-        """Convert a CGImage to PNG data (Cocoa)"""
-        try:
-            bitmapRep = Cocoa.NSBitmapImageRep.alloc().initWithCGImage_(cgimage)
-            png_data = bitmapRep.representationUsingType_properties_(Cocoa.NSPNGFileType, None)
-            bytes_data = png_data.bytes().tobytes()
-            return bytes_data
-        except Exception as e:
-            print(f"Error in cgimage_to_png: {e}") # Error handling
-            return None
-
-
     def capture_window(self, window_title):
-        """Capture a specific window by title (Quartz)"""
+        """
+        Capture a specific window by title.
+        The method searches for a window whose title contains the given text.
+        """
         try:
             windows = self.get_window_list()
             if not windows:
                 print("No windows found!")
                 return None
 
-            window = None
-            # Try to find window by index first (if a number is provided)
+            target_window = None
+            # Allow selecting by index if a number is passed
             try:
                 idx = int(window_title)
                 if 0 <= idx < len(windows):
-                    window = windows[idx]
+                    target_window = windows[idx]
             except ValueError:
-                # If not a number, search by title
+                # Otherwise search by title (case-insensitive)
                 for win in windows:
                     if window_title.lower() in win['title'].lower():
-                        window = win
+                        target_window = win
                         break
 
-            if not window:
+            if not target_window:
                 print(f"No window found matching: {window_title}")
                 return None
 
-            self.save_window_to_cache(window['title']) # Save to cache
+            self.save_window_to_cache(target_window['title'])
 
-            bounds = window['bounds']
-            x, y = int(bounds['X']), int(bounds['Y'])
-            width, height = int(bounds['Width']), int(bounds['Height'])
-            rect = CGRectMake(x, y, width, height)
-            windowid = window['id']
+            bounds = target_window['bounds']
+            left = bounds['X']
+            top = bounds['Y']
+            right = left + bounds['Width']
+            bottom = top + bounds['Height']
 
-            # --- CRITICAL: This part is most likely to cause issues ---
-            try:
-                windowimg = CGWindowListCreateImage(
-                    rect,
-                    kCGWindowListOptionIncludingWindow,
-                    windowid,
-                    kCGWindowImageBoundsIgnoreFraming
-                )
-            except Exception as e:
-                print(f"Error capturing window with Quartz: {e}")
-                return None
-            # --------------------------------------------------------
-
-            if not windowimg:
-                print("Failed to capture window")
-                return None
-
-            png_data = self.cgimage_to_png(windowimg)
-            if not png_data:
-                print("Failed to convert image to PNG")
-                return None
-
-            img = Image.open(io.BytesIO(png_data))
+            # Capture the region using PIL's ImageGrab
+            img = ImageGrab.grab(bbox=(left, top, right, bottom))
             return img
 
         except Exception as e:
@@ -136,12 +95,17 @@ class WindowCapture:
             return None
 
     def capture_and_save(self, window_title):
-        """Captures, saves, and returns the image."""
+        """
+        Captures the window and saves the image to the logs directory.
+        """
         img = self.capture_window(window_title)
         if img:
             os.makedirs(self.logs_output_dir, exist_ok=True)
-            safe_title = ''.join(c for c in window_title if c.isalnum() or c in (' ', '-', '_'))
-            filename = f'{self.logs_output_dir}/{safe_title}_{int(time.time())}.png'
+            # Create a safe filename using only alphanumerics and a few symbols
+            safe_title = ''.join(
+                c for c in window_title if c.isalnum() or c in (' ', '-', '_')
+            ).strip().replace(' ', '_')
+            filename = f"{self.logs_output_dir}/{safe_title}_{int(time.time())}.png"
             img.save(filename)
             print(f"Screenshot saved as {filename}")
             return img
