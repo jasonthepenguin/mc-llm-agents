@@ -3,9 +3,9 @@ import mcpi.block as block
 import time
 
 # Connect to the Minecraft server
-mc = minecraft.Minecraft.create()
+# mc = minecraft.Minecraft.create() # REMOVE
 
-def move_forward(distance):
+def move_forward(mc, distance):
     """Moves the player forward, handling obstacles one block high and doors."""
 
     pos = mc.player.getPos()
@@ -65,7 +65,7 @@ def move_forward(distance):
 
 
 # --- Main program ---
-mc.postToChat("Moving forward 10 blocks!")
-mc.postToChat("NicDunz i am near.")
-move_forward(10)
-mc.postToChat("Action Done! Sending next screenshot to LLM")
+# mc.postToChat("Moving forward 10 blocks!") # REMOVE
+# mc.postToChat("NicDunz i am near.") # REMOVE
+# move_forward(10) # REMOVE
+# mc.postToChat("Action Done! Sending next screenshot to LLM") # REMOVE

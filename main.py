@@ -9,6 +9,11 @@ import datetime
 import io
 # --- Import the new screenshot module ---
 from screenshot import WindowCapture
+# --- Import move.py ---
+import MCPI_Scripts.move as move
+# --- Import mcpi ---
+import mcpi.minecraft
+from tkinter import messagebox
 
 
 # --- Tkinter GUI Code ---
@@ -41,24 +46,24 @@ else:
     logo_label = tk.Label(top_frame, text="Logo")
     logo_label.grid(row=0, column=0, sticky="w")
 
-# Middle: Model Selector drop-down inline with label
+# Middle: Model Selector drop-down, stacked layout
 model_frame = tk.Frame(top_frame)
-model_frame.grid(row=0, column=1, sticky="e", padx=30)
+model_frame.grid(row=0, column=1, sticky="ew", padx=30)  # Use "ew" for horizontal expansion
 model_label = tk.Label(model_frame, text="Model Selector:")
-model_label.pack(side=tk.LEFT, padx=(0, 10))
+model_label.pack(side=tk.TOP, anchor="w")  # Align label to top-left
 model_options = ["Sonnet 3.5 (Anthropic)", "Gpt-4o (OpenAI)"]
-model_var = tk.StringVar(value="Sonnet 3.5 (Anthropic)")  # Updated default value
+model_var = tk.StringVar(value="Sonnet 3.5 (Anthropic)")
 model_combobox = ttk.Combobox(model_frame, textvariable=model_var, values=model_options, state="readonly", width=15)
-model_combobox.pack(side=tk.LEFT)
+model_combobox.pack(side=tk.TOP, anchor="w") # Align combobox to top-left
 
-# Right: Openrouter API key text field inline with label
+# Right: Openrouter API key text field, stacked layout
 api_frame = tk.Frame(top_frame)
-api_frame.grid(row=0, column=2, sticky="e", padx=(0, 20))  # Added right padding
+api_frame.grid(row=0, column=2, sticky="ew", padx=(0, 20))  # Use "ew", added left padding
 api_label = tk.Label(api_frame, text="Openrouter API key:")
-api_label.pack(side=tk.LEFT, padx=(0, 10))  # Added padding between label and entry
+api_label.pack(side=tk.TOP, anchor="w") # Align label to top-left
 api_key_var = tk.StringVar()
-api_entry = tk.Entry(api_frame, textvariable=api_key_var, width=25, show="•")  # Added show parameter
-api_entry.pack(side=tk.LEFT)
+api_entry = tk.Entry(api_frame, textvariable=api_key_var, width=25, show="•")
+api_entry.pack(side=tk.TOP, anchor="w")  # Align entry to top-left
 
 # Configure column weights for better distribution
 top_frame.grid_columnconfigure(0, weight=1)  # Logo area
@@ -122,6 +127,20 @@ logs_output_var = tk.StringVar(value="./logs")
 logs_output_button = tk.Button(logs_output_frame, text="Select Logs Directory", command=lambda: browse_directory(logs_output_var))
 logs_output_button.pack(fill=tk.X)
 
+# --- Add Move Button ---
+def move_player():
+    """Moves the player in Minecraft."""
+    try:
+        move.move_forward(mc, 10)  # Call move_forward with mc and distance
+        #take screenshot after move
+        take_screenshot()
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not connect to Minecraft: {e}")
+
+move_button = tk.Button(logs_output_frame, text="Move", command=move_player)
+move_button.pack(fill=tk.X)
+
+
 def browse_directory(var):
     from tkinter import filedialog
     directory = filedialog.askdirectory(initialdir=var.get())
@@ -137,7 +156,7 @@ def select_window():
     """Lists available windows and allows selection (integrated)."""
     windows = window_capture.get_window_list()  # Use class method
     if not windows:
-        tk.messagebox.showerror("Error", "No windows found!")
+        messagebox.showerror("Error", "No windows found!")
         return
 
     window_titles = [f"{win['owner']} - {win['title']}" for win in windows]
@@ -166,7 +185,7 @@ def take_screenshot():
     """Captures and displays the screenshot (integrated)."""
     window_title = selected_window_var.get()
     if not window_title:
-        tk.messagebox.showwarning("Warning", "No window selected.")
+        messagebox.showwarning("Warning", "No window selected.")
         return
 
     # Extract just the title.  We stored "Owner - Title".
@@ -180,7 +199,7 @@ def take_screenshot():
         screenshot_canvas.create_image(0, 0, anchor=tk.NW, image=screenshot_tk)
         screenshot_canvas.image = screenshot_tk  # Keep a reference!
     else:
-        tk.messagebox.showerror("Error", "Failed to capture screenshot.")
+        messagebox.showerror("Error", "Failed to capture screenshot.")
 
 # Create right panel for screenshot
 screenshot_frame = tk.Frame(center_frame)
@@ -239,6 +258,14 @@ def update_logs_output_dir(*args):
     window_capture.logs_output_dir = logs_output_var.get()
 
 logs_output_var.trace_add("write", update_logs_output_dir)
+
+# --- Create Minecraft Connection ---
+try:
+    mc = mcpi.minecraft.Minecraft.create()
+    mc.postToChat("Connected to Minecraft")
+except Exception as e:
+    messagebox.showerror("Error", f"Could not connect to Minecraft: {e}")
+    mc = None  # Set mc to None if connection fails
 
 # Start the main event loop
 root.mainloop()
