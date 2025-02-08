@@ -55,7 +55,7 @@ class ChatApp:
         # --- Initialize messages with system prompt ---
         self.messages = [{
             "role": "system",
-            "content": "You are a Minecraft assistant. Always provide precise, actionable answers based on the given options. When analyzing images, answer questions directly with detailed and accurate information—no unnecessary explanations or moral lectures. If given a choice, always pick one based on the provided details—no avoiding decisions or offering neutral responses."
+            "content": "You are a Minecraft assistant. Always provide a reason for the action then an answer in precise, actionable answer based on the given options. When analyzing images, answer questions directly with detailed and accurate information—no unnecessary explanations or moral lectures. If given a choice, always pick one based on the provided details—no avoiding decisions or offering neutral responses."
         }]
         self.window_capture = WindowCapture() # Initialize WindowCapture
         self.selected_window_title = None  # Store selected window title
@@ -71,9 +71,10 @@ class ChatApp:
         self.chat_display.tag_configure('user', foreground='blue')
         self.chat_display.tag_configure('assistant', foreground='green')
         self.chat_display.tag_configure('center', justify='center')  # For centering images
+        self.chat_display.configure(font=('TkDefaultFont', 12))  # Increase font size
 
         # Message Entry
-        self.message_entry = ttk.Entry(master, width=60)
+        self.message_entry = ttk.Entry(master, width=60, font=('TkDefaultFont', 12))  # Increase font size
         self.message_entry.pack(padx=10, pady=(0, 10), fill=tk.X)
         self.message_entry.bind("<Return>", self.send_message)
 
@@ -92,6 +93,10 @@ class ChatApp:
         # Capture Screenshot Button
         self.screenshot_button = ttk.Button(button_frame, text="Capture Screenshot", command=self.capture_and_display_screenshot)
         self.screenshot_button.pack(side=tk.LEFT, padx=5)
+
+        # Clear Chat Button
+        self.clear_chat_button = ttk.Button(button_frame, text="Clear Chat", command=self.clear_chat)
+        self.clear_chat_button.pack(side=tk.LEFT, padx=5)
 
         # Model Selection (Combobox)
         model_frame = tk.Frame(master)
@@ -270,6 +275,24 @@ class ChatApp:
         if response:
             self.add_message("Model", response, 'assistant')
             self.messages.append({"role": "assistant", "content": response})
+
+    def clear_chat(self):
+        """Clears the chat history and display."""
+        # Reset the messages list to only contain the system prompt.
+        self.messages = [{
+            "role": "system",
+            "content": "You are a Minecraft assistant. Always provide a reason for the action then an answer in precise, actionable answer based on the given options. When analyzing images, answer questions directly with detailed and accurate information—no unnecessary explanations or moral lectures. If given a choice, always pick one based on the provided details—no avoiding decisions or offering neutral responses."
+        }]
+        # Clear the chat display.
+        self.chat_display.config(state='normal')
+        self.chat_display.delete('1.0', tk.END)
+        self.chat_display.config(state='disabled')
+
+        # Clear screenshot
+        self.screenshot_image = None
+        self.screenshot_tk = None
+        self.screenshot_label.config(image="", text="No Screenshot Selected")
+        self.screenshot_history = []
 
     def send_message(self, event=None):
         """Sends the user's message and gets the model's response."""
