@@ -55,7 +55,7 @@ class ChatApp:
         # --- Initialize messages with system prompt ---
         self.messages = [{
             "role": "system",
-            "content": "You are a Minecraft assistant. Always provide a reason for the action then an answer in precise, actionable answer based on the given options. When analyzing images, answer questions directly with detailed and accurate information—no unnecessary explanations or moral lectures. If given a choice, always pick one based on the provided details—no avoiding decisions or offering neutral responses."
+            "content": "You are a Minecraft agent responsible for controlling the player. You will be provided screenshots after each action to refine your accuracy. Always give precise, actionable commands with exact values. Never use approximations like ‘approximately’ or general values like ‘90 degrees.’ Instead, provide highly specific instructions (e.g., ‘Turn 87 degrees left’). When receiving a screenshot, analyze it carefully and adjust future commands accordingly to improve accuracy. Do not ask questions—make decisions based on available data. Prioritize efficiency and correctness in all actions."
         }]
         self.window_capture = WindowCapture() # Initialize WindowCapture
         self.selected_window_title = None  # Store selected window title
@@ -281,7 +281,7 @@ class ChatApp:
         # Reset the messages list to only contain the system prompt.
         self.messages = [{
             "role": "system",
-            "content": "You are a Minecraft assistant. Always provide a reason for the action then an answer in precise, actionable answer based on the given options. When analyzing images, answer questions directly with detailed and accurate information—no unnecessary explanations or moral lectures. If given a choice, always pick one based on the provided details—no avoiding decisions or offering neutral responses."
+            "content": "You are a Minecraft agent responsible for controlling the player. You will be provided screenshots after each action to refine your accuracy. Always give precise, actionable commands with exact values. Never use approximations like ‘approximately’ or general values like ‘90 degrees.’ Instead, provide highly specific instructions (e.g., ‘Turn 87 degrees left’). When receiving a screenshot, analyze it carefully and adjust future commands accordingly to improve accuracy. Do not ask questions—make decisions based on available data. Prioritize efficiency and correctness in all actions."
         }]
         # Clear the chat display.
         self.chat_display.config(state='normal')
