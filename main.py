@@ -23,12 +23,26 @@ import mcpi.minecraft
 # Global variable to store the most recent screenshot (PIL Image)
 current_screenshot = None
 
+def center_window(window):
+    """Center a tkinter window on the screen"""
+    window.update_idletasks()
+    width = window.winfo_width()
+    height = window.winfo_height()
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    window.geometry(f'{width}x{height}+{x}+{y}')
+
 # -------------------------
 # Main GUI (top, center & bottom frames)
 # -------------------------
 root = tk.Tk()
 root.title("FlowersBench MC Eval")
+root.withdraw()  # Hide the window initially
 root.geometry("800x600")
+center_window(root)
+root.deiconify()  # Show the window in its final position
 
 try:
     logo_image_pil = Image.open("flowers.png")  # Change to your PNG file name
@@ -216,6 +230,8 @@ def select_window():
     window_titles = [f"{win['owner']} - {win['title']}" for win in windows]
     popup = tk.Toplevel(root)
     popup.title("Select Window")
+    popup.geometry("300x150")
+    center_window(popup)
     if window_titles:
         selected_window_var.set(window_titles[0])
         window_menu = tk.OptionMenu(popup, selected_window_var, *window_titles)
@@ -299,9 +315,7 @@ goal_entry.bind('<FocusIn>', on_entry_click)
 
 start_button = tk.Button(bottom_frame, text="Start", command=start_action)
 start_button.pack(side=tk.LEFT, padx=(0, 10))
-# Also add a button to trigger screenshot capture
-screenshot_button_main = tk.Button(bottom_frame, text="Capture Screenshot", command=take_screenshot)
-screenshot_button_main.pack(side=tk.RIGHT, padx=(0, 10))
+# Remove screenshot button from main GUI
 select_window_button = tk.Button(bottom_frame, text="Select Window", command=select_window)
 select_window_button.pack(side=tk.RIGHT, padx=(0, 10))
 
@@ -341,7 +355,7 @@ class ChatWindow:
         # Initialize messages with system prompt
         self.messages = [{
             "role": "system",
-            "content": "You are a Minecraft agent responsible for controlling the player. You will be provided screenshots after each action to refine your accuracy. Always give precise, actionable commands with exact values. Never use approximations like ‘approximately’ or general values like ‘90 degrees.’ Instead, provide highly specific instructions (e.g., ‘Turn 87 degrees left’). When receiving a screenshot, analyze it carefully and adjust future commands accordingly to improve accuracy. Do not ask questions—make decisions based on available data. Prioritize efficiency and correctness in all actions."
+            "content": "You are a Minecraft agent responsible for controlling the player. You will be provided screenshots after each action to refine your accuracy. Always give precise, actionable commands with exact values. Never use approximations like 'approximately' or general values like '90 degrees.' Instead, provide highly specific instructions (e.g., 'Turn 87 degrees left'). When receiving a screenshot, analyze it carefully and adjust future commands accordingly to improve accuracy. Do not ask questions—make decisions based on available data. Prioritize efficiency and correctness in all actions."
         }]
         # Use the shared WindowCapture and selected window title passed from main GUI.
         self.window_capture = window_capture
@@ -374,8 +388,6 @@ class ChatWindow:
         button_frame.pack(pady=(0,10))
         self.send_button = ttk.Button(button_frame, text="Send", command=self.send_message)
         self.send_button.pack(side=tk.LEFT, padx=5)
-        self.select_window_button = ttk.Button(button_frame, text="Select Window", command=self.select_window)
-        self.select_window_button.pack(side=tk.LEFT, padx=5)
         self.screenshot_button = ttk.Button(button_frame, text="Capture Screenshot", command=self.capture_and_display_screenshot)
         self.screenshot_button.pack(side=tk.LEFT, padx=5)
         self.clear_chat_button = ttk.Button(button_frame, text="Clear Chat", command=self.clear_chat)
@@ -401,42 +413,9 @@ class ChatWindow:
         except Exception as e:
             print(f"Could not load logo: {e}")
     
-    def center_window(self, window, width=300, height=150):
-        screen_width = window.winfo_screenwidth()
-        screen_height = window.winfo_screenheight()
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
-        window.geometry(f"{width}x{height}+{x}+{y}")
-    
-    def select_window(self):
-        windows = self.window_capture.get_window_list()
-        if not windows:
-            messagebox.showerror("Error", "No windows found!")
-            return
-        window_titles = [f"{win['owner']} - {win['title']}" for win in windows]
-        popup = tk.Toplevel(self.master)
-        popup.title("Select Window")
-        self.center_window(popup)
-        selected_window_var = tk.StringVar()
-        if window_titles:
-            selected_window_var.set(window_titles[0])
-            window_menu = tk.OptionMenu(popup, selected_window_var, *window_titles)
-            window_menu.pack(pady=10)
-        else:
-            tk.Label(popup, text="No windows found.").pack(pady=10)
-        def confirm_selection():
-            selected_title = selected_window_var.get().split(" - ", 1)[1]
-            self.window_capture.save_window_to_cache(selected_title)
-            self.selected_window_title = selected_title
-            popup.destroy()
-        confirm_button = tk.Button(popup, text="Confirm", command=confirm_selection)
-        confirm_button.pack()
-        popup.transient(self.master)
-        popup.grab_set()
-    
     def capture_and_display_screenshot(self):
         if self.selected_window_title is None:
-            messagebox.showerror("Error", "Please select a window first.")
+            messagebox.showerror("Error", "No window selected. Please select a window from the main interface.")
             return
         img = self.window_capture.capture_and_save(self.selected_window_title)
         if img:

@@ -13,3 +13,6 @@ logs/
 # environment variable file
 
 .env
+
+
+chat.py
