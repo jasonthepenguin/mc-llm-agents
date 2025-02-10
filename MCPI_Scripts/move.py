@@ -73,19 +73,19 @@ def move_forward(mc, distance):
 def look_left(mc, degrees):
     """Rotates the player's view to the left by the specified degrees."""
     current_rotation = mc.player.getRotation()
-    new_rotation = (current_rotation + degrees) % 360  # Keep within 0-360 range
+    new_rotation = (current_rotation - degrees) % 360  # Changed from + to -
     mc.player.setRotation(new_rotation)
 
 def look_right(mc, degrees):
     """Rotates the player's view to the right by the specified degrees."""
     current_rotation = mc.player.getRotation()
-    new_rotation = (current_rotation - degrees) % 360 # Keep within 0-360 range
+    new_rotation = (current_rotation + degrees) % 360  # Changed from - to +
     mc.player.setRotation(new_rotation)
 
 def look_up(mc, degrees):
     """Changes the player's pitch (up/down angle) upwards, limited to -90 to 90."""
     current_pitch = mc.player.getPitch()
-    new_pitch = current_pitch + degrees
+    new_pitch = current_pitch - degrees  # Changed to subtract for consistent behavior
     # Clamp the pitch to the valid range
     new_pitch = max(-90, min(90, new_pitch))
     mc.player.setPitch(new_pitch)
@@ -93,7 +93,7 @@ def look_up(mc, degrees):
 def look_down(mc, degrees):
     """Changes the player's pitch (up/down angle) downwards, limited to -90 to 90."""
     current_pitch = mc.player.getPitch()
-    new_pitch = current_pitch - degrees
+    new_pitch = current_pitch + degrees  # Changed to add for consistent behavior
     # Clamp the pitch to the valid range
     new_pitch = max(-90, min(90, new_pitch))
     mc.player.setPitch(new_pitch)

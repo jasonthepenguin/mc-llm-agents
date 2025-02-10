@@ -344,18 +344,45 @@ def encode_image_to_base64(image):
 # ----------------------------------------------------------------
 # ChatWindow class (integrated chat functionality from openrouter.py)
 class ChatWindow:
+    # Class variable for system prompt
+    SYSTEM_PROMPT = """You are a Minecraft assistant. When you want to execute an action, 
+    output it in the following format:
+    <<COMMAND>>
+    action_name(parameter)
+    <<END>>
+    
+    Available commands:
+    - move_forward(distance)
+    - look_left(degrees)
+    - look_right(degrees)
+    - look_up(degrees)
+    - look_down(degrees)
+    
+    Always provide a reason for the action, then output the command in the specified format.
+    Example:
+    I'll move forward 10 blocks to reach the house.
+    <<COMMAND>>
+    move_forward(10)
+    <<END>>
+    """
+
     def __init__(self, master, api_key, model, window_capture, selected_window_title, initial_screenshot=None):
         self.master = master
         self.api_key = api_key
         self.model_name = model
+        # Add references to the main GUI variables
+        self.model_var = model_var  # Add reference to model_var
+        self.selected_window_var = selected_window_var  # Add reference to selected_window_var
+        
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=os.environ.get("OPENROUTER_BASE_URL")
         )
-        # Initialize messages with system prompt
+        
+        # Initialize messages with system prompt using class variable
         self.messages = [{
             "role": "system",
-            "content": "You are a Minecraft agent responsible for controlling the player. You will be provided screenshots after each action to refine your accuracy. Always give precise, actionable commands with exact values. Never use approximations like 'approximately' or general values like '90 degrees.' Instead, provide highly specific instructions (e.g., 'Turn 87 degrees left'). When receiving a screenshot, analyze it carefully and adjust future commands accordingly to improve accuracy. Do not ask questions—make decisions based on available data. Prioritize efficiency and correctness in all actions."
+            "content": self.SYSTEM_PROMPT  # Using the class variable here
         }]
         # Use the shared WindowCapture and selected window title passed from main GUI.
         self.window_capture = window_capture
@@ -373,10 +400,10 @@ class ChatWindow:
         # Chat Display
         self.chat_display = scrolledtext.ScrolledText(master, wrap=tk.WORD, state='disabled', height=15, width=60)
         self.chat_display.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
-        self.chat_display.tag_configure('user', foreground='blue')
-        self.chat_display.tag_configure('assistant', foreground='green')
+        self.chat_display.tag_configure('user', foreground='blue', font=('TkDefaultFont', 14))
+        self.chat_display.tag_configure('assistant', foreground='green', font=('TkDefaultFont', 14))
         self.chat_display.tag_configure('center', justify='center')
-        self.chat_display.configure(font=('TkDefaultFont', 12))
+        self.chat_display.configure(font=('TkDefaultFont', 14))
         
         # Message Entry
         self.message_entry = ttk.Entry(master, width=60, font=('TkDefaultFont', 12))
@@ -397,9 +424,9 @@ class ChatWindow:
         self.loading_label = tk.Label(master, text="")
         self.loading_label.pack()
         
-        # Display the selected model
-        model_label = tk.Label(master, text=f"Model: {self.model_name}", font=('TkDefaultFont', 10, 'italic'))
-        model_label.pack(pady=(0,5))
+        # Display the selected model - store the label as instance variable
+        self.model_label = tk.Label(master, text=f"Model: {self.model_name}", font=('TkDefaultFont', 10, 'italic'))
+        self.model_label.pack(pady=(0,5))
         
         # Add logo at bottom right
         try:
@@ -412,12 +439,34 @@ class ChatWindow:
             logo_label.pack()
         except Exception as e:
             print(f"Could not load logo: {e}")
+        
+        # Add trace to model_var to update when changed
+        self.model_var.trace_add("write", self.update_model)
+        # Add trace to selected_window_var to update when changed
+        self.selected_window_var.trace_add("write", self.update_selected_window)
     
+    def update_model(self, *args):
+        """Update the model when changed in main GUI"""
+        self.model_name = self.model_var.get()
+        # Now this will work since model_label is an instance variable
+        self.model_label.config(text=f"Model: {self.model_name}")
+
+    def update_selected_window(self, *args):
+        """Update the selected window when changed in main GUI"""
+        if self.selected_window_var.get():
+            self.selected_window_title = self.selected_window_var.get().split(" - ", 1)[1]
+            self.add_message("System", "Window selection updated.")
+
     def capture_and_display_screenshot(self):
-        if self.selected_window_title is None:
+        # Remove the initial check for selected_window_title
+        # Instead, get the current selection from selected_window_var
+        if not self.selected_window_var.get():
             messagebox.showerror("Error", "No window selected. Please select a window from the main interface.")
             return
-        img = self.window_capture.capture_and_save(self.selected_window_title)
+        
+        selected_title = self.selected_window_var.get().split(" - ", 1)[1]
+        img = self.window_capture.capture_and_save(selected_title)
+        
         if img:
             # Store the original image
             self.screenshot_image = img
@@ -501,11 +550,13 @@ class ChatWindow:
         if response:
             self.add_message("Model", response, 'assistant')
             self.messages.append({"role": "assistant", "content": response})
+            # Try to execute any commands in the response
+            execute_command(response)
     
     def clear_chat(self):
         self.messages = [{
             "role": "system",
-            "content": "You are a Minecraft assistant. Always provide a reason for the action then an answer in precise, actionable answer based on the given options. When analyzing images, answer questions directly with detailed and accurate information—no unnecessary explanations or moral lectures. If given a choice, always pick one based on the provided details—no avoiding decisions or offering neutral responses."
+            "content": self.SYSTEM_PROMPT
         }]
         self.chat_display.config(state='normal')
         self.chat_display.delete('1.0', tk.END)
@@ -535,6 +586,39 @@ class ChatWindow:
             daemon=True
         )
         thread.start()
+
+def execute_command(command_str):
+    """Execute a command from the LLM."""
+    try:
+        # Extract command between markers
+        if "<<COMMAND>>" not in command_str or "<<END>>" not in command_str:
+            return False
+            
+        command = command_str.split("<<COMMAND>>")[1].split("<<END>>")[0].strip()
+        
+        # Parse the command
+        parts = command.split("(")
+        if len(parts) != 2:
+            return False
+            
+        action = parts[0].strip()
+        args = [arg.strip() for arg in parts[1].rstrip(")").split(",")]
+        
+        # Execute the appropriate function
+        if action == "move_forward":
+            move.move_forward(mc, int(args[0]))
+        elif action == "look_left":
+            move.look_left(mc, int(args[0]))
+        elif action == "look_right":
+            move.look_right(mc, int(args[0]))
+        elif action == "look_up":
+            move.look_up(mc, int(args[0]))
+        elif action == "look_down":
+            move.look_down(mc, int(args[0]))
+        return True
+    except Exception as e:
+        print(f"Error executing command: {e}")
+        return False
 
 # ----------------------------------------------------------------
 # Start the main event loop
