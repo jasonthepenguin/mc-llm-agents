@@ -289,10 +289,6 @@ screenshot_canvas.create_text(300, 200, text="Screenshot display area", fill="gr
 bottom_frame = tk.Frame(root)
 bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=10)
 
-goal_var = tk.StringVar(value="Enter goal for LLM to accomplish")
-goal_entry = tk.Entry(bottom_frame, textvariable=goal_var)
-goal_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
-
 def start_action():
     # Use the API key and model from the GUI, and pass the shared window/screenshot values to the chat window.
     provided_api_key = api_key_var.get().strip()
@@ -300,7 +296,6 @@ def start_action():
         messagebox.showwarning("Warning", "Please provide an Openrouter API key.")
         return
     print("Starting action with:")
-    print(f"Goal: {goal_var.get()}")
     print(f"Model: {model_var.get()}")
     print(f"API Key: {api_key_var.get()}")
     print(f"Log Directory: {logs_output_var.get()}")
@@ -316,11 +311,6 @@ def start_action():
                window_capture=window_capture, 
                selected_window_title=selected_title,
                initial_screenshot=current_screenshot)
-
-def on_entry_click(event):
-    if goal_var.get() == "Enter goal for LLM to accomplish":
-        goal_entry.delete(0, tk.END)
-goal_entry.bind('<FocusIn>', on_entry_click)
 
 start_button = tk.Button(bottom_frame, text="Start", command=start_action)
 start_button.pack(side=tk.LEFT, padx=(0, 10))
@@ -355,7 +345,7 @@ def encode_image_to_base64(image):
 class ChatWindow:
     # Class variable for system prompt
     SYSTEM_PROMPT = """You are a Minecraft assistant. When you want to execute an action, 
-    output it in the following format:
+    output it in the following format (only one command at a time):
     <<COMMAND>>
     action_name(parameter)
     <<END>>
@@ -367,6 +357,8 @@ class ChatWindow:
     - look_up(degrees)
     - look_down(degrees)
     - open_door()
+    
+    Important: Only issue one command at a time. Wait for feedback before issuing another command.
     
     Always provide a reason for the action, then output the command in the specified format.
     Example:
