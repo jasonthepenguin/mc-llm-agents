@@ -353,7 +353,7 @@ class ChatWindow:
     <<COMMAND>>
     action_name(parameter)
     <<END>>
-    
+
     Available commands:
     - move_forward(distance)
     - look_left(degrees)
@@ -361,9 +361,12 @@ class ChatWindow:
     - look_up(degrees)
     - look_down(degrees)
     - open_door()
-    
-    Important: Only issue one command at a time. Wait for feedback before issuing another command.
-    
+
+    Important: 
+    - Only issue one command at a time. Wait for feedback before issuing another command.
+    - When making degree adjustments, always compare the current viewpoint's centered position to the target's position.
+    - Always reassess the current view position when a new screenshot is provided, as it indicates a change in perspective, as the degrees on the axis are relative to the new screenshot.
+
     Always provide a reason for the action, then output the command in the specified format.
     Example:
     I'll move forward 10 blocks to reach the house.
