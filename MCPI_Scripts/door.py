@@ -4,7 +4,7 @@ import mcpi.block as block
 # Connect to Minecraft
 mc = minecraft.Minecraft.create()
 
-def check_for_door():
+def check_for_door(mc):
     # Get the player's position
     pos = mc.player.getPos()
     
@@ -28,10 +28,12 @@ def check_for_door():
                         return True
     return False
 
+
 # Just check once and exit
-if check_for_door():
-    print("Door opened - script ending")
-    mc.postToChat("Action Done! Sending next screenshot to LLM")
-else:
-    print("No door found")
-    mc.postToChat("Action Done! Sending next screenshot to LLM")
+#if check_for_door():
+#    print("Door opened - script ending")
+#    mc.postToChat("Action Done! Sending next screenshot to LLM")
+#else:
+#    print("No door found")
+#    mc.postToChat("Action Done! Sending next screenshot to LLM")
+

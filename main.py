@@ -19,6 +19,8 @@ from screenshot import WindowCapture
 import MCPI_Scripts.move as move
 # --- Import mcpi ---
 import mcpi.minecraft
+# --- Import door module ---
+from MCPI_Scripts.door import check_for_door  # This should now just import the function without executing it
 
 # Global variable to store the most recent screenshot (PIL Image)
 current_screenshot = None
@@ -152,21 +154,70 @@ action_log_text.pack(fill=tk.X)
 action_log_text.tag_configure('gray', foreground='gray')
 action_log_text.config(state='disabled')
 
-log_entries = [
-    "Jump(forward)",
-    "look(90, 0)",
-    "move(3 blocks)",
-    "interact()"
-]
-for entry in log_entries:
-    action_log_text.insert(tk.END, f"{entry}\n", 'gray')
-action_log_text.config(state='disabled')
-
 logs_output_frame = tk.Frame(actions_frame)
 logs_output_frame.pack(fill=tk.X, pady=(10, 0))
 logs_output_var = tk.StringVar(value="./logs")
 logs_output_button = tk.Button(logs_output_frame, text="Select Logs Directory", command=lambda: browse_directory(logs_output_var))
 logs_output_button.pack(fill=tk.X)
+
+# Action Panel button (unchanged)
+def open_action_panel():
+    popup = tk.Toplevel(root)
+    popup.title("Action Panel")
+    popup.geometry("400x300")  # Made the window larger
+    
+    # Add padding and spacing
+    padding = {'padx': 10, 'pady': 5}
+    
+    tk.Label(popup, text="Move Forward").grid(row=0, column=0, sticky="w", **padding)
+    distance_var = tk.IntVar(value=1)
+    distance_entry = tk.Entry(popup, textvariable=distance_var, width=5)
+    distance_entry.grid(row=0, column=1, padx=5)
+    move_forward_button = tk.Button(popup, text="Go", command=lambda: move.move_forward(mc, distance_var.get()))
+    move_forward_button.grid(row=0, column=2)
+
+    tk.Label(popup, text="Look Left (degrees)").grid(row=1, column=0, sticky="w", **padding)
+    look_left_var = tk.IntVar(value=90)
+    look_left_entry = tk.Entry(popup, textvariable=look_left_var, width=5)
+    look_left_entry.grid(row=1, column=1, padx=5)
+    look_left_button = tk.Button(popup, text="Go", command=lambda: move.look_left(mc, look_left_var.get()))
+    look_left_button.grid(row=1, column=2)
+
+    tk.Label(popup, text="Look Right (degrees)").grid(row=2, column=0, sticky="w", **padding)
+    look_right_var = tk.IntVar(value=90)
+    look_right_entry = tk.Entry(popup, textvariable=look_right_var, width=5)
+    look_right_entry.grid(row=2, column=1, padx=5)
+    look_right_button = tk.Button(popup, text="Go", command=lambda: move.look_right(mc, look_right_var.get()))
+    look_right_button.grid(row=2, column=2)
+
+    tk.Label(popup, text="Look Up (degrees)").grid(row=3, column=0, sticky="w", **padding)
+    look_up_var = tk.IntVar(value=90)
+    look_up_entry = tk.Entry(popup, textvariable=look_up_var, width=5)
+    look_up_entry.grid(row=3, column=1, padx=5)
+    look_up_button = tk.Button(popup, text="Go", command=lambda: move.look_up(mc, look_up_var.get()))
+    look_up_button.grid(row=3, column=2)
+
+    tk.Label(popup, text="Look Down (degrees)").grid(row=4, column=0, sticky="w", **padding)
+    look_down_var = tk.IntVar(value=90)
+    look_down_entry = tk.Entry(popup, textvariable=look_down_var, width=5)
+    look_down_entry.grid(row=4, column=1, padx=5)
+    look_down_button = tk.Button(popup, text="Go", command=lambda: move.look_down(mc, look_down_var.get()))
+    look_down_button.grid(row=4, column=2)
+
+    # Add Open Door button (no parameters needed)
+    tk.Label(popup, text="Open Door").grid(row=5, column=0, sticky="w", **padding)
+    open_door_button = tk.Button(popup, text="Go", command=lambda: check_for_door(mc))
+    open_door_button.grid(row=5, column=2)
+
+    # Configure column weights to make the window more responsive
+    popup.grid_columnconfigure(0, weight=1)
+    popup.grid_columnconfigure(1, weight=1)
+    popup.grid_columnconfigure(2, weight=1)
+
+# Add action panel button beneath logs button
+action_panel_button = tk.Button(logs_output_frame, text="Action Panel", command=open_action_panel)
+action_panel_button.pack(fill=tk.X, pady=(5, 0))
+
 actions_button_frame = tk.Frame(logs_output_frame)
 actions_button_frame.pack(fill=tk.X)
 
@@ -175,48 +226,6 @@ def browse_directory(var):
     directory = filedialog.askdirectory(initialdir=var.get())
     if directory:
         var.set(directory)
-
-# Action Panel button (unchanged)
-def open_action_panel():
-    popup = tk.Toplevel(root)
-    popup.title("Action Panel")
-    tk.Label(popup, text="Move Forward").grid(row=0, column=0, sticky="w")
-    distance_var = tk.IntVar(value=1)
-    distance_entry = tk.Entry(popup, textvariable=distance_var, width=5)
-    distance_entry.grid(row=0, column=1, padx=5)
-    move_forward_button = tk.Button(popup, text="Go", command=lambda: move.move_forward(mc, distance_var.get()))
-    move_forward_button.grid(row=0, column=2)
-
-    tk.Label(popup, text="Look Left (degrees)").grid(row=1, column=0, sticky="w")
-    look_left_var = tk.IntVar(value=90)
-    look_left_entry = tk.Entry(popup, textvariable=look_left_var, width=5)
-    look_left_entry.grid(row=1, column=1, padx=5)
-    look_left_button = tk.Button(popup, text="Go", command=lambda: move.look_left(mc, look_left_var.get()))
-    look_left_button.grid(row=1, column=2)
-
-    tk.Label(popup, text="Look Right (degrees)").grid(row=2, column=0, sticky="w")
-    look_right_var = tk.IntVar(value=90)
-    look_right_entry = tk.Entry(popup, textvariable=look_right_var, width=5)
-    look_right_entry.grid(row=2, column=1, padx=5)
-    look_right_button = tk.Button(popup, text="Go", command=lambda: move.look_right(mc, look_right_var.get()))
-    look_right_button.grid(row=2, column=2)
-
-    tk.Label(popup, text="Look Up (degrees)").grid(row=3, column=0, sticky="w")
-    look_up_var = tk.IntVar(value=90)
-    look_up_entry = tk.Entry(popup, textvariable=look_up_var, width=5)
-    look_up_entry.grid(row=3, column=1, padx=5)
-    look_up_button = tk.Button(popup, text="Go", command=lambda: move.look_up(mc, look_up_var.get()))
-    look_up_button.grid(row=3, column=2)
-
-    tk.Label(popup, text="Look Down (degrees)").grid(row=4, column=0, sticky="w")
-    look_down_var = tk.IntVar(value=90)
-    look_down_entry = tk.Entry(popup, textvariable=look_down_var, width=5)
-    look_down_entry.grid(row=4, column=1, padx=5)
-    look_down_button = tk.Button(popup, text="Go", command=lambda: move.look_down(mc, look_down_var.get()))
-    look_down_button.grid(row=4, column=2)
-
-action_panel_button = tk.Button(actions_button_frame, text="Action Panel", command=open_action_panel, width=12)
-action_panel_button.grid(row=0, column=0, padx=2, pady=2)
 
 # --- Integrated Window Selection and Capture (for screenshots) ---
 window_capture = WindowCapture(logs_output_var.get())
@@ -617,8 +626,7 @@ def execute_command(command_str):
         elif action == "look_down":
             move.look_down(mc, int(args[0]))
         elif action == "open_door":
-            from MCPI_Scripts.door import check_for_door
-            check_for_door()
+            check_for_door(mc)  # Pass the mc connection
         return True
     except Exception as e:
         print(f"Error executing command: {e}")
