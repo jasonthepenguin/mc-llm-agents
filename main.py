@@ -357,6 +357,7 @@ class ChatWindow:
     - look_right(degrees)
     - look_up(degrees)
     - look_down(degrees)
+    - open_door()
     
     Always provide a reason for the action, then output the command in the specified format.
     Example:
@@ -615,6 +616,9 @@ def execute_command(command_str):
             move.look_up(mc, int(args[0]))
         elif action == "look_down":
             move.look_down(mc, int(args[0]))
+        elif action == "open_door":
+            from MCPI_Scripts.door import check_for_door
+            check_for_door()
         return True
     except Exception as e:
         print(f"Error executing command: {e}")
