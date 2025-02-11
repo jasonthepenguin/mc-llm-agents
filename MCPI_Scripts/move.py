@@ -98,4 +98,9 @@ def look_down(mc, degrees):
     new_pitch = max(-90, min(90, new_pitch))
     mc.player.setPitch(new_pitch)
 
+def center_view(mc):
+    """Centers the player's view by setting rotation to 0 and pitch to 0."""
+    mc.player.setRotation(0)  # Face North
+    mc.player.setPitch(0)     # Look straight ahead
+
 

@@ -76,9 +76,8 @@ model_label = tk.Label(model_frame, text="Model Selector:")
 model_label.pack(side=tk.TOP, anchor="w")
 model_options = [
     "openai/chatgpt-4o-latest",  
-    "mistralai/mistral-medium", 
     "openai/gpt-4o-mini", 
-    "google/gemini-1.5-pro-002",
+    "anthropic/claude-3.5-sonnet",
     "google/gemini-2.0-pro-exp-02-05:free"
 ]
 model_var = tk.StringVar(value="openai/chatgpt-4o-latest")
@@ -204,10 +203,15 @@ def open_action_panel():
     look_down_button = tk.Button(popup, text="Go", command=lambda: move.look_down(mc, look_down_var.get()))
     look_down_button.grid(row=4, column=2)
 
-    # Add Open Door button (no parameters needed)
-    tk.Label(popup, text="Open Door").grid(row=5, column=0, sticky="w", **padding)
+    # Add Center View button (after the Look Down section)
+    tk.Label(popup, text="Center View").grid(row=5, column=0, sticky="w", **padding)
+    center_view_button = tk.Button(popup, text="Go", command=lambda: move.center_view(mc))
+    center_view_button.grid(row=5, column=2)
+
+    # Move Open Door button to row 6
+    tk.Label(popup, text="Open Door").grid(row=6, column=0, sticky="w", **padding)
     open_door_button = tk.Button(popup, text="Go", command=lambda: check_for_door(mc))
-    open_door_button.grid(row=5, column=2)
+    open_door_button.grid(row=6, column=2)
 
     # Configure column weights to make the window more responsive
     popup.grid_columnconfigure(0, weight=1)
@@ -522,6 +526,11 @@ class ChatWindow:
     
     def chat_with_model(self, messages):
         try:
+            # Add debug logging
+            print(f"Sending message to {self.model_name}")
+            print(f"Number of messages in context: {len(messages)}")
+            print(f"Latest message type: {type(messages[-1]['content'])}")
+            
             chat_completion = self.client.chat.completions.create(
                 model=self.model_name,
                 messages=messages,
@@ -531,12 +540,21 @@ class ChatWindow:
                 seed=12345,
                 user="my-test-user",
             )
+            
+            if not chat_completion or not chat_completion.choices:
+                print("Debug: Received empty response from API")
+                print(f"Full API response: {chat_completion}")
+                raise Exception("No response received from the API")
+            
             response = chat_completion.choices[0].message.content
             return response
         except APIError as e:
+            print(f"API Error details: {str(e)}")
             messagebox.showerror("API Error", f"OpenAI API Error: {e}")
             return None
         except Exception as e:
+            print(f"Unexpected error details: {str(e)}")
+            print(f"Last message content: {messages[-1]['content'] if messages else 'No messages'}")
             messagebox.showerror("Error", f"An unexpected error occurred: {e}")
             return None
     
