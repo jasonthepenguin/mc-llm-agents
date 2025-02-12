@@ -1,0 +1,7 @@
+name: MCWebSocket
+version: 1.0
+main: com.jasonbotterill.plugin.MCWebSocket
+api-version: 1.13
+author: YourName
+description: A Paper plugin that exposes a WebSocket server.
+commands: {}
