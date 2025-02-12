@@ -104,3 +104,6 @@ def center_view(mc):
     mc.player.setPitch(0)     # Look straight ahead
 
 
+def post_to_chat(mc, msg):
+    """Posts a message to the Minecraft chat."""
+    mc.postToChat(msg)

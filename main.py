@@ -163,7 +163,7 @@ logs_output_button.pack(fill=tk.X)
 def open_action_panel():
     popup = tk.Toplevel(root)
     popup.title("Action Panel")
-    popup.geometry("400x300")  # Made the window larger
+    popup.geometry("400x350")  # Made taller to accommodate new field
     
     # Add padding and spacing
     padding = {'padx': 10, 'pady': 5}
@@ -212,6 +212,14 @@ def open_action_panel():
     tk.Label(popup, text="Open Door").grid(row=6, column=0, sticky="w", **padding)
     open_door_button = tk.Button(popup, text="Go", command=lambda: check_for_door(mc))
     open_door_button.grid(row=6, column=2)
+
+    # Add Message section (after the other controls)
+    tk.Label(popup, text="Send Message").grid(row=7, column=0, sticky="w", **padding)
+    message_var = tk.StringVar()
+    message_entry = tk.Entry(popup, textvariable=message_var, width=20)
+    message_entry.grid(row=7, column=1, padx=5)
+    message_button = tk.Button(popup, text="Send", command=lambda: move.post_to_chat(mc, message_var.get()))
+    message_button.grid(row=7, column=2)
 
     # Configure column weights to make the window more responsive
     popup.grid_columnconfigure(0, weight=1)
