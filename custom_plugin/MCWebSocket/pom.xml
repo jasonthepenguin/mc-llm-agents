@@ -29,6 +29,13 @@
             <artifactId>Java-WebSocket</artifactId>
             <version>1.5.3</version>
         </dependency>
+
+        <!-- JSON Simple Library -->
+        <dependency>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+            <version>1.1.1</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -59,6 +66,10 @@
                                 <relocation>
                                     <pattern>org.java_websocket</pattern>
                                     <shadedPattern>com.yourname.plugin.shaded.websocket</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.json.simple</pattern>
+                                    <shadedPattern>com.yourname.plugin.shaded.json</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
