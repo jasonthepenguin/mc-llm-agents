@@ -17,10 +17,9 @@ from openai import OpenAI, APIError
 from screenshot import WindowCapture
 # --- Import move.py ---
 import MCPI_Scripts.move as move
-# --- Import mcpi ---
-import mcpi.minecraft
 # --- Import door module ---
 from MCPI_Scripts.door import check_for_door  # This should now just import the function without executing it
+from MCPI_Scripts.move import mc_socket
 
 # Global variable to store the most recent screenshot (PIL Image)
 current_screenshot = None
@@ -172,45 +171,45 @@ def open_action_panel():
     distance_var = tk.IntVar(value=1)
     distance_entry = tk.Entry(popup, textvariable=distance_var, width=5)
     distance_entry.grid(row=0, column=1, padx=5)
-    move_forward_button = tk.Button(popup, text="Go", command=lambda: move.move_forward(mc, distance_var.get()))
+    move_forward_button = tk.Button(popup, text="Go", command=lambda: move.move_forward(distance_var.get()))
     move_forward_button.grid(row=0, column=2)
 
     tk.Label(popup, text="Look Left (degrees)").grid(row=1, column=0, sticky="w", **padding)
     look_left_var = tk.IntVar(value=90)
     look_left_entry = tk.Entry(popup, textvariable=look_left_var, width=5)
     look_left_entry.grid(row=1, column=1, padx=5)
-    look_left_button = tk.Button(popup, text="Go", command=lambda: move.look_left(mc, look_left_var.get()))
+    look_left_button = tk.Button(popup, text="Go", command=lambda: move.look_left(look_left_var.get()))
     look_left_button.grid(row=1, column=2)
 
     tk.Label(popup, text="Look Right (degrees)").grid(row=2, column=0, sticky="w", **padding)
     look_right_var = tk.IntVar(value=90)
     look_right_entry = tk.Entry(popup, textvariable=look_right_var, width=5)
     look_right_entry.grid(row=2, column=1, padx=5)
-    look_right_button = tk.Button(popup, text="Go", command=lambda: move.look_right(mc, look_right_var.get()))
+    look_right_button = tk.Button(popup, text="Go", command=lambda: move.look_right(look_right_var.get()))
     look_right_button.grid(row=2, column=2)
 
     tk.Label(popup, text="Look Up (degrees)").grid(row=3, column=0, sticky="w", **padding)
     look_up_var = tk.IntVar(value=90)
     look_up_entry = tk.Entry(popup, textvariable=look_up_var, width=5)
     look_up_entry.grid(row=3, column=1, padx=5)
-    look_up_button = tk.Button(popup, text="Go", command=lambda: move.look_up(mc, look_up_var.get()))
+    look_up_button = tk.Button(popup, text="Go", command=lambda: move.look_up(look_up_var.get()))
     look_up_button.grid(row=3, column=2)
 
     tk.Label(popup, text="Look Down (degrees)").grid(row=4, column=0, sticky="w", **padding)
     look_down_var = tk.IntVar(value=90)
     look_down_entry = tk.Entry(popup, textvariable=look_down_var, width=5)
     look_down_entry.grid(row=4, column=1, padx=5)
-    look_down_button = tk.Button(popup, text="Go", command=lambda: move.look_down(mc, look_down_var.get()))
+    look_down_button = tk.Button(popup, text="Go", command=lambda: move.look_down(look_down_var.get()))
     look_down_button.grid(row=4, column=2)
 
     # Add Center View button (after the Look Down section)
     tk.Label(popup, text="Center View").grid(row=5, column=0, sticky="w", **padding)
-    center_view_button = tk.Button(popup, text="Go", command=lambda: move.center_view(mc))
+    center_view_button = tk.Button(popup, text="Go", command=lambda: move.center_view())
     center_view_button.grid(row=5, column=2)
 
     # Move Open Door button to row 6
     tk.Label(popup, text="Open Door").grid(row=6, column=0, sticky="w", **padding)
-    open_door_button = tk.Button(popup, text="Go", command=lambda: check_for_door(mc))
+    open_door_button = tk.Button(popup, text="Go", command=lambda: check_for_door())
     open_door_button.grid(row=6, column=2)
 
     # Add Message section (after the other controls)
@@ -218,7 +217,7 @@ def open_action_panel():
     message_var = tk.StringVar()
     message_entry = tk.Entry(popup, textvariable=message_var, width=20)
     message_entry.grid(row=7, column=1, padx=5)
-    message_button = tk.Button(popup, text="Send", command=lambda: move.post_to_chat(mc, message_var.get()))
+    message_button = tk.Button(popup, text="Send", command=lambda: move.post_to_chat(message_var.get()))
     message_button.grid(row=7, column=2)
 
     # Configure column weights to make the window more responsive
@@ -337,8 +336,8 @@ logs_output_var.trace_add("write", update_logs_output_dir)
 
 # --- Create Minecraft Connection ---
 try:
-    mc = mcpi.minecraft.Minecraft.create()
-    mc.postToChat("Connected to Minecraft")
+    mc = None  # We'll pass this as a dummy parameter since our functions expect it
+    mc_socket.send_command("chat", {"message": "Connected to Minecraft"})
 except Exception as e:
     messagebox.showerror("Error", f"Could not connect to Minecraft: {e}")
     mc = None
