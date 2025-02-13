@@ -19,6 +19,7 @@ from Quartz import (
 )
 import Cocoa
 import json  # Import the json module
+from PIL import ImageDraw, ImageFont
 
 # --- Constants and Cache File ---
 WINDOW_CACHE_FILE = 'window_cache.json'
@@ -72,6 +73,59 @@ class WindowCapture:
             print(f"Error in cgimage_to_png: {e}") # Error handling
             return None
 
+    def draw_center_line(self, img):
+        """Draw a yellow horizontal line through the center of the image with numbered notches."""
+        # Create a copy of the image to avoid modifying the original
+        img_with_line = img.copy()
+        draw = ImageDraw.Draw(img_with_line)
+        
+        # Calculate center coordinates
+        center_x = img.width // 2
+        center_y = img.height // 2
+        
+        # Draw main yellow line from left to right edge
+        line_color = (255, 255, 0)  # Yellow color
+        line_thickness = max(1, img.height // 100)  # Scale thickness with image height
+        draw.line([(0, center_y), (img.width, center_y)], fill=line_color, width=line_thickness)
+        
+        # Calculate notch parameters
+        notch_length = line_thickness * 3  # Length of notch marks
+        small_notch_length = notch_length // 2  # Smaller notches for .5 increments
+        spacing = img.width // 40  # Double the number of segments for .5 increments
+        
+        try:
+            # Try to load Arial font with slightly larger size
+            font = ImageFont.truetype("arial.ttf", size=max(12, line_thickness * 2.5))
+        except:
+            font = ImageFont.load_default()
+        
+        # Text position is now always above the line
+        text_y = center_y - notch_length - 20
+        
+        # Draw notches and numbers
+        for i in range(-20, 21):  # -20 to +20 for .5 increments
+            x = center_x + (i * spacing)
+            if x >= 0 and x <= img.width:  # Only draw if within image bounds
+                # Determine if this is a whole number or .5 increment
+                is_whole_number = i % 2 == 0
+                current_value = i / 2 * 7.5  # Increased multiplier to make numbers larger per notch
+                
+                # Draw notch (full length for whole numbers, half length for .5)
+                current_notch_length = notch_length if is_whole_number else small_notch_length
+                draw.line([(x, center_y - current_notch_length), (x, center_y + current_notch_length)], 
+                         fill=line_color, width=line_thickness)
+                
+                # Draw numbers at intervals of 15 (including -60, -45, -30, -15, 0, 15, 30, 45, 60)
+                if is_whole_number and int(current_value) % 15 == 0:
+                    text = str(int(current_value))  # Use actual value (including negative)
+                    # Calculate text width for centering
+                    text_width = font.getsize(text)[0] if hasattr(font, 'getsize') else 6
+                    text_x = x - (text_width // 2)
+                    
+                    # Draw text in black without outline
+                    draw.text((text_x, text_y), text, fill=(0, 0, 0), font=font)
+        
+        return img_with_line
 
     def capture_window(self, window_title):
         """Capture a specific window by title (Quartz)"""
@@ -129,6 +183,7 @@ class WindowCapture:
                 return None
 
             img = Image.open(io.BytesIO(png_data))
+            img = self.draw_center_line(img)  # Add the center line
             return img
 
         except Exception as e:
