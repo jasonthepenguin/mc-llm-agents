@@ -17,12 +17,15 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.BlockData;
+import java.util.HashSet;
+import java.util.Set;
 
 public class MCWebSocket extends JavaPlugin {
 
     private WebSocketServer server;
     private static Logger logger;
     private JSONParser parser;
+    private final Set<WebSocket> activeConnections = new HashSet<>();
 
     @Override
     public void onEnable() {
@@ -41,35 +44,53 @@ public class MCWebSocket extends JavaPlugin {
             @Override
             public void onOpen(WebSocket conn, ClientHandshake handshake) {
                 logger.info("New connection from " + conn.getRemoteSocketAddress());
+                activeConnections.add(conn);
                 conn.send("Connected to Minecraft server");
             }
 
             @Override
             public void onClose(WebSocket conn, int code, String reason, boolean remote) {
                 logger.info("Connection closed: " + conn.getRemoteSocketAddress());
+                activeConnections.remove(conn);
             }
 
             @Override
             public void onMessage(WebSocket conn, String message) {
                 try {
+                    if (!activeConnections.contains(conn)) {
+                        logger.warning("Received message from inactive connection");
+                        return;
+                    }
+
                     JSONObject json = (JSONObject) parser.parse(message);
                     String command = (String) json.get("command");
                     JSONObject params = (JSONObject) json.get("params");
                     
                     Bukkit.getScheduler().runTask(getPlugin(MCWebSocket.class), () -> {
-                        handleCommand(command, params);
+                        try {
+                            handleCommand(command, params);
+                            if (activeConnections.contains(conn) && conn.isOpen()) {
+                                conn.send("Command executed: " + command);
+                            }
+                        } catch (Exception e) {
+                            logger.warning("Error executing command: " + e.getMessage());
+                            if (activeConnections.contains(conn) && conn.isOpen()) {
+                                conn.send("Error executing command: " + e.getMessage());
+                            }
+                        }
                     });
-                    
-                    conn.send("Command executed: " + command);
                 } catch (ParseException e) {
                     logger.warning("Failed to parse message: " + e.getMessage());
-                    conn.send("Error: Invalid command format");
+                    if (conn.isOpen()) {
+                        conn.send("Error: Invalid command format");
+                    }
                 }
             }
 
             @Override
             public void onError(WebSocket conn, Exception ex) {
                 logger.warning("WebSocket error: " + ex.getMessage());
+                activeConnections.remove(conn);
             }
 
             @Override
@@ -77,6 +98,7 @@ public class MCWebSocket extends JavaPlugin {
                 logger.info("WebSocket server started on port 8765");
             }
         };
+        server.setConnectionLostTimeout(30);
         server.start();
     }
 
@@ -145,6 +167,13 @@ public class MCWebSocket extends JavaPlugin {
                         targetBlock.setBlockData(blockData);
                     }
                 }
+                break;
+
+            case "attack":
+                // Make the player swing their arm and attack
+                player.swingMainHand();
+                // This will trigger the attack action and hit any entity in range
+                player.attack(player.getTargetEntity(3));  // 3 block range, adjust as needed
                 break;
         }
     }

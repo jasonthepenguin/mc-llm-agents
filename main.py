@@ -10,6 +10,8 @@ import base64
 import threading
 import json
 
+# For context I'm using a local paper/bukkit server at version 1.18.2 and making my own plugin with Java to provide functionality we can call with Python websockets.
+
 # --- Import OpenRouter/OpenAI client ---
 from openai import OpenAI, APIError
 
@@ -162,7 +164,7 @@ logs_output_button.pack(fill=tk.X)
 def open_action_panel():
     popup = tk.Toplevel(root)
     popup.title("Action Panel")
-    popup.geometry("400x350")  # Made taller to accommodate new field
+    popup.geometry("400x350")
     
     # Add padding and spacing
     padding = {'padx': 10, 'pady': 5}
@@ -212,13 +214,18 @@ def open_action_panel():
     open_door_button = tk.Button(popup, text="Go", command=lambda: check_for_door())
     open_door_button.grid(row=6, column=2)
 
-    # Add Message section (after the other controls)
-    tk.Label(popup, text="Send Message").grid(row=7, column=0, sticky="w", **padding)
+    # Add Attack button in row 7
+    tk.Label(popup, text="Attack").grid(row=7, column=0, sticky="w", **padding)
+    attack_button = tk.Button(popup, text="Go", command=lambda: move.attack())
+    attack_button.grid(row=7, column=2)
+
+    # Move Message section to row 8
+    tk.Label(popup, text="Send Message").grid(row=8, column=0, sticky="w", **padding)
     message_var = tk.StringVar()
     message_entry = tk.Entry(popup, textvariable=message_var, width=20)
-    message_entry.grid(row=7, column=1, padx=5)
+    message_entry.grid(row=8, column=1, padx=5)
     message_button = tk.Button(popup, text="Send", command=lambda: move.post_to_chat(message_var.get()))
-    message_button.grid(row=7, column=2)
+    message_button.grid(row=8, column=2)
 
     # Configure column weights to make the window more responsive
     popup.grid_columnconfigure(0, weight=1)
@@ -368,11 +375,23 @@ class ChatWindow:
     - look_up(degrees)
     - look_down(degrees)
     - open_door()
+    - attack()
 
     Important: 
     - Only issue one command at a time. Wait for feedback before issuing another command.
     - When making degree adjustments, always compare the current viewpoint's centered position to the target's position.
     - Always reassess the current view position when a new screenshot is provided, as it indicates a change in perspective, as the degrees on the axis are relative to the new screenshot.
+    - When working towards a goal:
+        1. If the goal is NOT complete:
+            - Explain your next action
+            - Execute ONE command to progress toward the goal
+            - When turning, use the exact degree numbers shown in the screenshot for precise navigation
+            - If the goal has multiple parts (e.g., "turn at mob, then attack"), ensure ALL parts are completed before declaring success
+        2. If the goal IS complete:
+            - Respond with 'GOAL COMPLETED'
+            - Explain why you believe the goal has been achieved
+            - Include specific details from the current screenshot that confirm completion
+            - Verify that ALL parts of the goal, if multiple, have been accomplished
 
     Always provide a reason for the action, then output the command in the specified format.
     Example:
@@ -435,6 +454,12 @@ class ChatWindow:
         self.screenshot_button.pack(side=tk.LEFT, padx=5)
         self.clear_chat_button = ttk.Button(button_frame, text="Clear Chat", command=self.clear_chat)
         self.clear_chat_button.pack(side=tk.LEFT, padx=5)
+        self.start_agent_button = ttk.Button(button_frame, text="Start Agent", command=self.start_agent)
+        self.start_agent_button.pack(side=tk.LEFT, padx=5)
+        
+        # Add agent state variables
+        self.agent_running = False
+        self.current_turn = 0
         
         # Loading indicator
         self.loading_label = tk.Label(master, text="")
@@ -617,6 +642,90 @@ class ChatWindow:
         )
         thread.start()
 
+    def start_agent(self):
+        """Start the autonomous agent loop with the current text as the goal"""
+        if self.agent_running:
+            self.agent_running = False
+            self.start_agent_button.config(text="Start Agent")
+            self.add_message("System", "Agent stopped.", 'assistant')
+            return
+
+        goal = self.message_entry.get()
+        if not goal:
+            messagebox.showwarning("Warning", "Please enter a goal for the agent.")
+            return
+
+        self.agent_running = True
+        self.current_turn = 0
+        self.start_agent_button.config(text="Stop Agent")
+        
+        # Add the goal to the chat history
+        self.add_message("System", f"Starting agent with goal: {goal}", 'assistant')
+        self.message_entry.delete(0, tk.END)
+        
+        # Start the agent loop
+        self.agent_loop(goal)
+
+    def agent_loop(self, goal):
+        """Run the agent loop with the specified goal"""
+        if not self.agent_running:
+            return
+            
+        if self.current_turn >= max_turns_var.get():
+            self.add_message("System", "Maximum turns reached. Agent stopping.", 'assistant')
+            self.agent_running = False
+            self.start_agent_button.config(text="Start Agent")
+            return
+
+        # Take a screenshot
+        self.capture_and_display_screenshot()
+        
+        # Prepare the message for the model
+        context = f"""Goal: {goal}
+Current turn: {self.current_turn + 1}/{max_turns_var.get()}"""
+
+        message_content = [{"type": "text", "text": context}]
+        
+        if self.screenshot_image:
+            base64_image = encode_image_to_base64(self.screenshot_image)
+            message_content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}
+            })
+
+        # Add the context to messages and get model response
+        self.messages.append({"role": "user", "content": message_content})
+        
+        def process_response():
+            try:
+                response = self.chat_with_model(self.messages)
+                if response:
+                    self.add_message("Model", response, 'assistant')
+                    self.messages.append({"role": "assistant", "content": response})
+                    
+                    if "GOAL COMPLETED" in response.upper():
+                        self.add_message("System", "Goal completed! Agent stopping.", 'assistant')
+                        self.agent_running = False
+                        self.start_agent_button.config(text="Start Agent")
+                        return
+                    
+                    # Execute any commands in the response
+                    execute_command(response)
+                    
+                    # Increment turn counter
+                    self.current_turn += 1
+                    
+                    # Schedule next iteration after a short delay
+                    self.master.after(1000, lambda: self.agent_loop(goal))
+            except Exception as e:
+                self.add_message("System", f"Error in agent loop: {str(e)}", 'assistant')
+                self.agent_running = False
+                self.start_agent_button.config(text="Start Agent")
+
+        # Start processing in a separate thread
+        thread = threading.Thread(target=process_response, daemon=True)
+        thread.start()
+
 def execute_command(command_str):
     """Execute a command from the LLM."""
     try:
@@ -634,19 +743,21 @@ def execute_command(command_str):
         action = parts[0].strip()
         args = [arg.strip() for arg in parts[1].rstrip(")").split(",")]
         
-        # Execute the appropriate function
+        # Execute the appropriate function without passing mc
         if action == "move_forward":
-            move.move_forward(mc, int(args[0]))
+            move.move_forward(int(args[0]))
         elif action == "look_left":
-            move.look_left(mc, int(args[0]))
+            move.look_left(int(args[0]))
         elif action == "look_right":
-            move.look_right(mc, int(args[0]))
+            move.look_right(int(args[0]))
         elif action == "look_up":
-            move.look_up(mc, int(args[0]))
+            move.look_up(int(args[0]))
         elif action == "look_down":
-            move.look_down(mc, int(args[0]))
+            move.look_down(int(args[0]))
         elif action == "open_door":
-            check_for_door(mc)  # Pass the mc connection
+            check_for_door()  # Remove mc parameter
+        elif action == "attack":
+            move.attack()  # Remove mc parameter
         return True
     except Exception as e:
         print(f"Error executing command: {e}")
